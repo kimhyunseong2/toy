@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>입지 분석</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=yourKEY&libraries=places"></script>
+</head>
+<body>
+    <h1>입지 분석</h1>
+    <form th:action="@{/locations/new}" method="post">
+        <div>
+            <label for="name">위치 이름:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div>
+            <label for="latitude">위도:</label>
+            <input type="number" id="latitude" name="latitude" step="any" required>
+        </div>
+        <div>
+            <label for="longitude">경도:</label>
+            <input type="number" id="longitude" name="longitude" step="any" required>
+        </div>
+        <div id="map" style="height: 400px; width: 100%;"></div>
+        <button type="submit">분석하기</button>
+    </form>
+
+    <script>
+        function initMap() {
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat: 37.5665, lng: 126.9780}, // 서울 중심
+                zoom: 13
+            });
+
+            map.addListener('click', function(e) {
+                document.getElementById('latitude').value = e.latLng.lat();
+                document.getElementById('longitude').value = e.latLng.lng();
+            });
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html> 
