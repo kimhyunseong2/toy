@@ -1,43 +1,130 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>입지 분석</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=yourKEY&libraries=places"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps 주변 공공시설 검색</title>
+    <script
+            src="https://maps.googleapis.com/maps/api/js?key=yourkey&libraries=places"
+            async
+            defer>
+    </script>
+    <style>
+        #map {
+            height: 700px;
+            width: 1000px;
+        }
+        #search-container {
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
-    <h1>입지 분석</h1>
-    <form th:action="@{/locations/new}" method="post">
-        <div>
-            <label for="name">위치 이름:</label>
-            <input type="text" id="name" name="name" required>
-        </div>
-        <div>
-            <label for="latitude">위도:</label>
-            <input type="number" id="latitude" name="latitude" step="any" required>
-        </div>
-        <div>
-            <label for="longitude">경도:</label>
-            <input type="number" id="longitude" name="longitude" step="any" required>
-        </div>
-        <div id="map" style="height: 400px; width: 100%;"></div>
-        <button type="submit">분석하기</button>
-    </form>
+<div id="search-container">
+    <input type="text" id="search-box" placeholder="검색할 지역 입력" />
+    <button onclick="searchLocation()">검색</button>
+    <br><br>
+    <button onclick="analyzeLocation()">분석하기</button>
+</div>
+<div id="map"></div>
 
-    <script>
-        function initMap() {
-            const map = new google.maps.Map(document.getElementById('map'), {
-                center: {lat: 37.5665, lng: 126.9780}, // 서울 중심
-                zoom: 13
-            });
+<script>
+    let map;
+    let markers = [];
+    let service;
+    let infoWindow;
+    let selectedLocation = null;
 
-            map.addListener('click', function(e) {
-                document.getElementById('latitude').value = e.latLng.lat();
-                document.getElementById('longitude').value = e.latLng.lng();
+    function initMap() {
+        // 지도 초기화
+        const initialLocation = { lat: 37.5665, lng: 126.9780 }; // 기본 위치: 서울
+        map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 10,
+            center: initialLocation,
+        });
+
+        // 지도 클릭 이벤트 추가
+        map.addListener('click', function(e) {
+            if (selectedLocation) {
+                selectedLocation.setMap(null);
+            }
+
+            selectedLocation = new google.maps.Marker({
+                position: e.latLng,
+                map: map,
+                title: '선택한 위치'
             });
+        });
+
+        infoWindow = new google.maps.InfoWindow();
+        service = new google.maps.places.PlacesService(map);
+    }
+
+    function searchLocation() {
+        const searchBox = document.getElementById("search-box").value;
+
+        if (!searchBox) {
+            alert("검색할 지역을 입력하세요.");
+            return;
         }
 
-        window.onload = initMap;
-    </script>
+        // Place Search 요청
+        const request = {
+            query: searchBox,
+            fields: ["geometry", "name", "place_id"],
+        };
+
+        service.findPlaceFromQuery(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+                const place = results[0];
+
+                // 지도 이동 및 마커 추가
+                const location = place.geometry.location;
+                map.setCenter(location);
+                map.setZoom(15);
+            } else {
+                alert("검색에 실패했습니다: " + status);
+            }
+        });
+    }
+
+    function analyzeLocation() {
+        if (!selectedLocation) {
+            alert("지도에서 위치를 선택해주세요.");
+            return;
+        }
+
+        const position = selectedLocation.getPosition();
+
+        // 폼 생성 및 제출
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/locations/new';
+
+        const latInput = document.createElement('input');
+        latInput.type = 'hidden';
+        latInput.name = 'latitude';
+        latInput.value = position.lat();
+
+        const lngInput = document.createElement('input');
+        lngInput.type = 'hidden';
+        lngInput.name = 'longitude';
+        lngInput.value = position.lng();
+
+        const typeInput = document.createElement('input');
+        typeInput.type = 'hidden';
+        typeInput.name = 'facilityType';
+        typeInput.value = 'all';
+
+        form.appendChild(latInput);
+        form.appendChild(lngInput);
+        form.appendChild(typeInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // 페이지 로드 시 지도 초기화
+    window.onload = initMap;
+</script>
 </body>
-</html> 
+</html>

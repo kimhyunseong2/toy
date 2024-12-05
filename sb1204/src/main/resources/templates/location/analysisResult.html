@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>입지 분석 결과</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=yourKEY&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=yourkey&libraries=places"></script>
     <style>
         .result-container {
             max-width: 800px;
@@ -42,63 +42,190 @@
             border-radius: 4px;
             margin-top: 20px;
         }
+
+        .filter-container {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        #facility-type-filter {
+            padding: 5px;
+            margin-left: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
-    <div class="result-container">
-        <h1>입지 분석 결과</h1>
-        
-        <div class="score-box">
-            <h2>종합 점수</h2>
-            <div class="score" th:text="${location.score} + '점'"></div>
-        </div>
+<div class="result-container">
+    <h1>입지 분석 결과</h1>
 
-        <div class="details">
-            <h2>상세 분석 결과</h2>
-            <p><strong>위치명:</strong> <span th:text="${location.name}"></span></p>
-            <p><strong>주변 공공기관 수:</strong> <span th:text="${location.publicFacilitiesCount} + '개'"></span></p>
-            <p><strong>분석 결과:</strong> <span th:text="${location.analysis}"></span></p>
-        </div>
-
-        <div class="map-container" id="map"></div>
-
-        <a href="/locations/new" class="back-button">새로운 위치 분석하기</a>
+    <div class="score-box">
+        <h2>종합 점수</h2>
+        <div class="score" th:text="${location.score} + '점'"></div>
     </div>
 
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-        const latitude = /*[[${location.latitude}]]*/ 0;
-        const longitude = /*[[${location.longitude}]]*/ 0;
-        
-        function initMap() {
-            const location = { lat: latitude, lng: longitude };
-            const map = new google.maps.Map(document.getElementById('map'), {
-                center: location,
-                zoom: 15
-            });
+    <div class="details">
+        <h2>상세 분석 결과</h2>
+        <p><strong>위도:</strong> <span th:text="${location.latitude}"></span></p>
+        <p><strong>경도:</strong> <span th:text="${location.longitude}"></span></p>
+        <p><strong>주변 공공기관 수:</strong> <span th:text="${location.publicFacilitiesCount} + '개'"></span></p>
+        <p><strong>분석 결과:</strong> <span th:text="${location.analysis}"></span></p>
+    </div>
 
-            // 선택한 위치에 마커 표시
-            new google.maps.Marker({
-                position: location,
-                map: map,
-                title: /*[[${location.name}]]*/ ''
-            });
+    <div class="filter-container">
+        <label for="facility-type-filter">시설 유형 선택:</label>
+        <select id="facility-type-filter" onchange="filterMarkers()">
+            <option value="ALL">모든 시설</option>
+            <option value="HOSPITAL">병원</option>
+            <option value="POLICE">경찰서</option>
+            <option value="FIRE_STATION">소방서</option>
+            <option value="SCHOOL">학교</option>
+            <option value="UNIVERSITY">대학교</option>
+        </select>
+    </div>
 
-            // 1km 반경 원 표시
-            new google.maps.Circle({
-                map: map,
-                center: location,
-                radius: 1000, // 1km = 1000m
-                strokeColor: '#2196F3',
-                strokeOpacity: 0.8,
-                strokeWeight: 2,
-                fillColor: '#2196F3',
-                fillOpacity: 0.1
-            });
+    <div class="map-container" id="map"></div>
+
+    <a href="/" class="back-button">새로운 위치 분석하기</a>
+</div>
+
+
+
+<script th:inline="javascript">
+    const latitude = [[${location.latitude}]];
+    const longitude = [[${location.longitude}]];
+    const facilitiesData = [[${location.facilitiesData}]];
+    let map;
+    let markers = [];  // 모든 마커를 저장할 배열
+
+    function initMap() {
+        const location = {
+            lat: parseFloat(latitude),
+            lng: parseFloat(longitude)
+        };
+
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: location,
+            zoom: 15
+        });
+
+        // 선택한 위치에 메인 마커 표시
+        const mainMarker = new google.maps.Marker({
+            position: location,
+            map: map,
+            title: '선택한 위치',
+            icon: {
+                url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+            }
+        });
+
+        // 1km 반경 원 표시
+        const circle = new google.maps.Circle({
+            map: map,
+            center: location,
+            radius: 1000,
+            strokeColor: '#2196F3',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#2196F3',
+            fillOpacity: 0.1
+        });
+
+        if (facilitiesData) {
+            createMarkers();
         }
+    }
 
-        window.onload = initMap;
-        /*]]>*/
-    </script>
+    function createMarkers() {
+        // 기존 마커 제거
+        clearMarkers();
+
+        const facilities = JSON.parse(facilitiesData);
+        const selectedType = document.getElementById('facility-type-filter').value;
+
+        facilities.forEach(facility => {
+            // 선택된 유형이 ALL이거나 시설 유형이 일치하는 경우에만 마커 생성
+            if (selectedType === 'ALL' || facility.type === selectedType) {
+                const facilityLocation = {
+                    lat: facility.lat,
+                    lng: facility.lng
+                };
+
+                // 시설 유형에 따른 마커 아이콘 설정
+                let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+                let facilityTypeKorean = '';
+                switch(facility.type) {
+                    case 'HOSPITAL':
+                        iconUrl = 'http://maps.google.com/mapfiles/ms/icons/pink-dot.png';
+                        facilityTypeKorean = '병원';
+                        break;
+                    case 'POLICE':
+                        iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+                        facilityTypeKorean = '경찰서';
+                        break;
+                    case 'FIRE_STATION':
+                        iconUrl = 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
+                        facilityTypeKorean = '소방서';
+                        break;
+                    case 'SCHOOL':
+                        iconUrl = 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
+                        facilityTypeKorean = '학교';
+                        break;
+                    case 'UNIVERSITY':
+                        iconUrl = 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png';
+                        facilityTypeKorean = '대학교';
+                        break;
+                }
+
+                const marker = new google.maps.Marker({
+                    position: facilityLocation,
+                    map: map,
+                    title: facility.name,
+                    icon: {
+                        url: iconUrl
+                    }
+                });
+
+                // 마커에 마우스오버 시 정보창 표시
+                const infoContent = `
+                    <div style="padding: 10px;">
+                        <h3 style="margin: 0 0 5px 0;">${facility.name}</h3>
+                        <p style="margin: 0;">시설 유형: ${facilityTypeKorean}</p>
+                    </div>
+                `;
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: infoContent
+                });
+
+                marker.addListener('mouseover', () => {
+                    infoWindow.open(map, marker);
+                });
+
+                marker.addListener('mouseout', () => {
+                    infoWindow.close();
+                });
+
+                markers.push(marker);
+            }
+        });
+    }
+
+    function clearMarkers() {
+        // 모든 마커 제거
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+    }
+
+    function filterMarkers() {
+        createMarkers();
+    }
+
+    window.onload = initMap;
+</script>
+
 </body>
-</html> 
+</html>
