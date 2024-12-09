@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Maps 주변 공공시설 검색</title>
     <script
-            src="https://maps.googleapis.com/maps/api/js?key=yourkey&libraries=places"
+            src="https://maps.googleapis.com/maps/api/js?key=youkey&libraries=places"
             async
             defer>
     </script>
@@ -42,20 +42,20 @@
             zoom: 10,
             center: initialLocation,
         });
-
+        
         // 지도 클릭 이벤트 추가
         map.addListener('click', function(e) {
             if (selectedLocation) {
                 selectedLocation.setMap(null);
             }
-
+            
             selectedLocation = new google.maps.Marker({
                 position: e.latLng,
                 map: map,
                 title: '선택한 위치'
             });
         });
-
+        
         infoWindow = new google.maps.InfoWindow();
         service = new google.maps.places.PlacesService(map);
     }
@@ -93,29 +93,29 @@
             alert("지도에서 위치를 선택해주세요.");
             return;
         }
-
+        
         const position = selectedLocation.getPosition();
-
+        
         // 폼 생성 및 제출
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/locations/new';
-
+        
         const latInput = document.createElement('input');
         latInput.type = 'hidden';
         latInput.name = 'latitude';
         latInput.value = position.lat();
-
+        
         const lngInput = document.createElement('input');
         lngInput.type = 'hidden';
         lngInput.name = 'longitude';
         lngInput.value = position.lng();
-
+        
         const typeInput = document.createElement('input');
         typeInput.type = 'hidden';
         typeInput.name = 'facilityType';
         typeInput.value = 'all';
-
+        
         form.appendChild(latInput);
         form.appendChild(lngInput);
         form.appendChild(typeInput);

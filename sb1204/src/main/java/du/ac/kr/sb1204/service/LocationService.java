@@ -16,13 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 입지 분석 비즈니스 로직을 처리하는 서비스 클래스
- * 주요 기능:
- * - Google Places API를 통한 주변 시설 검색
- * - 입지 점수 계산
- * - 분석 결과 생성
- */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -32,14 +25,6 @@ public class LocationService {
     @Value("${google.maps.api.key}")
     private String apiKey;
 
-    /**
-     * 입지 분석을 수행하는 메인 메서드
-     * @param name 위치명
-     * @param latitude 위도
-     * @param longitude 경도
-     * @param facilityType 시설 유형
-     * @return 분석된 Location 엔티티
-     */
     public Location analyzeLocation(String name, double latitude, double longitude, String facilityType) {
         Location location = new Location();
         location.setName(name);
@@ -52,7 +37,7 @@ public class LocationService {
                     .build();
 
             LatLng locationLatLng = new LatLng(latitude, longitude);
-
+            
             // 모든 시설 유형 정의
             Map<PlaceType, String> placeTypes = new HashMap<>();
             placeTypes.put(PlaceType.HOSPITAL, "HOSPITAL");
@@ -73,7 +58,7 @@ public class LocationService {
 
                 if (response.results != null) {
                     totalCount += response.results.length;
-
+                    
                     for (PlacesSearchResult result : response.results) {
                         Map<String, Object> facility = new HashMap<>();
                         facility.put("name", result.name);
@@ -103,14 +88,6 @@ public class LocationService {
         }
     }
 
-    /**
-     * 시설 수에 따른 점수 계산
-     * 30개 이상: 100점
-     * 20개 이상: 80점
-     * 10개 이상: 60점
-     * 5개 이상: 40점
-     * 그 외: 20점
-     */
     private int calculateScore(int publicFacilitiesCount) {
         System.out.println("Calculating score for " + publicFacilitiesCount + " facilities"); // 디버깅용 로그
 
@@ -127,9 +104,6 @@ public class LocationService {
         }
     }
 
-    /**
-     * 점수에 따른 분석 결과 텍스트 생성
-     */
     private String generateAnalysis(int score, int count) {
         StringBuilder analysis = new StringBuilder();
         analysis.append(String.format("이 위치에서 1km 반경 내에 총 %d개의 공공시설이 있습니다.\n", count));
